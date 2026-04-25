@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>VetCare Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-10 font-sans">
+    <div class="max-w-6xl mx-auto grid grid-cols-3 gap-8">
+
+        <div class="col-span-1 bg-white shadow-md rounded-lg p-6 h-fit">
+            <h2 class="text-xl font-bold text-gray-800 mb-4">New Appointment</h2>
+            <form id="appointment-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Pet ID</label>
+                    <input type="number" id="pet_id" class="mt-1 block w-full border border-gray-300 rounded-md p-2" required placeholder="Enter Pet ID (e.g. 1)">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Date & Time</label>
+                    <input type="datetime-local" id="date_time" class="mt-1 block w-full border border-gray-300 rounded-md p-2" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Reason</label>
+                    <input type="text" id="reason" class="mt-1 block w-full border border-gray-300 rounded-md p-2" required>
+                </div>
+                <button type="submit" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700">Book Appointment</button>
+            </form>
+        </div>
+
+        <div class="col-span-2 bg-white shadow-md rounded-lg overflow-hidden h-fit">
+            <h2 class="text-xl font-bold text-gray-800 p-6 pb-2">Schedule</h2>
+            <table class="min-w-full text-left">
+                <thead class="bg-gray-200">
+                    <tr>
+                        <th class="p-4 font-semibold text-gray-700">Pet (Owner)</th>
+                        <th class="p-4 font-semibold text-gray-700">Date & Time</th>
+                        <th class="p-4 font-semibold text-gray-700">Status</th>
+                        <th class="p-4 font-semibold text-gray-700">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body" class="divide-y divide-gray-200"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://127.0.0.1:8000/api/appointments/';
+
+        async function fetchAppointments() {
+            const response = await fetch(API_URL);
+            const data = await response.json();
+            const tableBody = document.getElementById('table-body');
+            tableBody.innerHTML = '';
+
+            data.forEach(app => {
+                const formattedDate = new Date(app.date_time).toLocaleString();
+                const statusColor = app.status === 'Completed' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800';
+
+                tableBody.innerHTML += `
+                    <tr class="hover:bg-gray-50">
+                        <td class="p-4 text-gray-800 font-medium">${app.pet_name} <br><span class="text-xs text-gray-500">${app.owner_name}</span></td>
+                        <td class="p-4 text-gray-600">${formattedDate}<br><span class="text-xs text-gray-500">${app.reason}</span></td>
+                        <td class="p-4"><span class="px-3 py-1 rounded-full text-sm ${statusColor}">${app.status}</span></td>
+                        <td class="p-4 flex space-x-2">
+                            <button onclick="updateStatus(${app.id})" class="text-sm bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600">Complete</button>
+                            <button onclick="deleteAppointment(${app.id})" class="text-sm bg-red-500 text-white px-2 py-1 rounded hover:bg-red-600">Delete</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        // POST: Create
+        document.getElementById('appointment-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                pet: document.getElementById('pet_id').value,
+                date_time: document.getElementById('date_time').value,
+                reason: document.getElementById('reason').value,
+                status: "Scheduled"
+            };
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            fetchAppointments();
+        });
+
+        // PATCH: Update
+        async function updateStatus(id) {
+            await fetch(`${API_URL}${id}/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: 'Completed' })
+            });
+            fetchAppointments();
+        }
+
+        // DELETE
+        async function deleteAppointment(id) {
+            await fetch(`${API_URL}${id}/`, { method: 'DELETE' });
+            fetchAppointments();
+        }
+
+        window.onload = fetchAppointments;
+    </script>
+</body>
+</html>
